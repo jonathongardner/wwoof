@@ -4,8 +4,8 @@ Data scraper for wwoofusa. This contains a ruby script to populate a `data.csv` 
 ## Iniital Setup
 Install packages/gems (this only needs to be run once):
 ```bash
-gem isntall typhoeus
-gem isntall nokogiri
+gem install typhoeus
+gem install nokogiri
 ```
 
 ## Running
