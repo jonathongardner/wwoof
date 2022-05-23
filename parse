@@ -1,0 +1,52 @@
+#!/usr/bin/env ruby
+
+require 'csv'
+require 'typhoeus'
+require 'nokogiri'
+
+# probably should use3 gemfile with bundler but not installed by default so just manually install gems
+# require 'bundler/setup'
+# Bundler.require(:default, :development)
+
+headers = {
+  'review' => '//*[@id="block-system-main"]/div/div/dl/div/div/div[1]/div[2]/div[4]/div[7]/div/text()',
+  'host_type' => '//*[@id="edit-group-host-contact-body"]/div[4]/text()',
+  'accommodations' => '//*[@id="edit-group-about-meals-body"]/div[5]/text()',
+  'room' => '//*[@id="edit-group-about-meals-body"]/div[6]/text()',
+  'internet_access' => '//*[@id="edit-group-about-meals-body"]/div[7]/text()',
+  'internet_access_limited' => '//*[@id="edit-group-about-meals-body"]/div[8]/text()',
+}
+
+def blank?(v)
+  v.nil? || v.empty?
+end
+
+my_csv = CSV.foreach('data.csv', headers: true).to_a
+
+my_csv.each_with_index do |row, index|
+  url = row['url']
+  next puts("No url: #{index}") if blank?(url)
+  next puts("Already set: #{url}") unless blank?(row['review']) || !blank?(ENV['RELOAD'])
+
+  puts("Gettting: #{url}")
+  response = Typhoeus.get(url) #, followlocation: true) # seems like missing urls redirect to login
+  next puts "failed: #{response.code}" unless response.success?
+
+  puts("parsing: #{response.code}")
+  doc = Nokogiri::HTML(response.body)
+  headers.each do |key, path|
+    row[key] = doc.xpath(path).to_s.gsub(/\s+/, ' ')
+  end
+end
+
+# write to string first in case error in this we dont overwrite file
+csv_string = CSV.generate do |csv|
+  all_headers = ['url'] + headers.keys
+  csv << all_headers
+
+  my_csv.each do |row|
+    csv << all_headers.map { |h| row[h] }
+  end
+end
+
+File.write("data.csv", csv_string)
